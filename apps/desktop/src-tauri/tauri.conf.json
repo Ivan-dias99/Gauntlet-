@@ -45,7 +45,7 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; connect-src http://127.0.0.1:3002 http://localhost:3002 https://ruberra-backend-jkpf-production.up.railway.app; style-src 'self' 'unsafe-inline'; script-src 'self'; img-src 'self' data:"
+      "csp": "default-src 'self'; connect-src http://127.0.0.1:3002 http://localhost:3002 https://ruberra-backend-jkpf-production.up.railway.app; style-src 'self' 'unsafe-inline'; script-src 'self'; img-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'none'; frame-ancestors 'none'; worker-src 'self'"
     }
   },
   "bundle": {
@@ -62,7 +62,7 @@
     "updater": {
       "active": true,
       "endpoints": [
-        "https://github.com/Ivan-dias99/Aiinterfaceshelldesign/releases/latest/download/latest.json"
+        "https://github.com/Ivan-dias99/Gauntlet-/releases/latest/download/latest.json"
       ],
       "dialog": true,
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDEwRTQ0NzY5N0JCNTQ1NjcKUldSblJiVjdhVWZrRU1tay9ibjlVNkRKa3gwcGx3MGp2M0Y4VUJYdkpsUnFDT0E5TWc3eXl4ZE0K"

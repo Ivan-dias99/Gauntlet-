@@ -42,10 +42,27 @@ into someone else's bucket.
 State is process-local. Multiple workers will each have their own
 buckets; for a hard global cap a Redis-backed limiter would replace this
 module without changing the middleware contract.
+
+Bucket dimensions:
+
+  * ``(ip, route_class)`` — always evaluated. Cheap baseline that bounds
+    abuse from a single source even when no auth is in play.
+  * ``(api_key_hash, route_class)`` — evaluated when the request carries
+    a Bearer token. A leaked key would otherwise let a single attacker
+    cycle through residential IPs and stay under the per-IP cap; the
+    per-key bucket caps the key itself regardless of source IP. The key
+    is sha256'd before use so the bucket map never holds the raw secret
+    (logs, core dumps, ``RateLimiter.reset`` test paths).
+
+When both dimensions apply, BOTH must permit the request. The 429
+response reports the dimension that tripped (``ip`` or ``api_key``) on
+``detail.scope`` so the frontend can tell the operator which surface to
+back off.
 """
 
 from __future__ import annotations
 
+import hashlib
 import logging
 import threading
 import time
@@ -157,33 +174,108 @@ class _Bucket:
             seconds = deficit / self.spec.refill_per_sec if self.spec.refill_per_sec > 0 else 60.0
             return False, max(seconds * 1000.0, 1.0)
 
+    def refund(self, cost: float = 1.0) -> None:
+        """Return ``cost`` tokens to the bucket — used by the limiter when
+        a multi-dimension check passed on this dimension but failed on a
+        sibling, so the caller is not charged twice for one rejection."""
+        with self._lock:
+            self.tokens = min(float(self.spec.burst), self.tokens + cost)
+
+
+def _hash_key(api_key: str) -> str:
+    """SHA-256 of the API key — the bucket map never stores the secret
+    itself, so a logged ``RateLimiter`` repr or a heap dump cannot leak
+    it back. Prefix with ``k:`` to keep the key/IP namespaces disjoint
+    in case an IP literal ever happens to look like a hash."""
+    return "k:" + hashlib.sha256(api_key.encode("utf-8")).hexdigest()
+
+
+# Maximum number of buckets the limiter holds before LRU eviction
+# kicks in. Under honest load the working set is small (active IPs ×
+# active keys × 6 route classes); a hard cap defends against memory
+# pressure when the working set explodes (botnet IPs, key rotation,
+# or attacker probing). Eviction is by last-touched, which is the
+# behaviour you want — recently-active callers stay budgeted, idle
+# callers re-allocate fresh buckets (full burst) on their next hit.
+_DEFAULT_MAX_BUCKETS = 20_000
+
 
 class RateLimiter:
-    """In-memory token-bucket store keyed by ``(ip, route_class)``."""
+    """In-memory token-bucket store keyed by
+    ``(scope, identifier, route_class)``. ``scope`` is ``"ip"`` or
+    ``"api_key"`` so the two dimensions never collide. LRU-evicting
+    when the bucket count exceeds ``max_buckets`` so the map cannot
+    grow without bound across process lifetime."""
 
-    def __init__(self) -> None:
-        self._buckets: dict[tuple[str, str], _Bucket] = {}
+    def __init__(self, max_buckets: int = _DEFAULT_MAX_BUCKETS) -> None:
+        # OrderedDict so we can ``move_to_end`` on touch and
+        # ``popitem(last=False)`` to drop the LRU entry.
+        from collections import OrderedDict
+        self._buckets: "OrderedDict[tuple[str, str, str], _Bucket]" = OrderedDict()
+        self._max_buckets = int(max_buckets)
         self._lock = threading.Lock()
 
-    def _bucket_for(self, ip: str, route_class: str) -> _Bucket:
-        key = (ip, route_class)
-        b = self._buckets.get(key)
-        if b is not None:
-            return b
+    def _bucket_for(self, scope: str, identifier: str, route_class: str) -> _Bucket:
+        key = (scope, identifier, route_class)
         with self._lock:
             b = self._buckets.get(key)
-            if b is None:
-                spec = ROUTE_CLASSES.get(route_class, ROUTE_CLASSES["default"])
-                b = _Bucket(spec)
-                self._buckets[key] = b
+            if b is not None:
+                # Touch — move to MRU end so eviction targets the
+                # genuinely cold callers, not the active one.
+                self._buckets.move_to_end(key)
+                return b
+            spec = ROUTE_CLASSES.get(route_class, ROUTE_CLASSES["default"])
+            b = _Bucket(spec)
+            self._buckets[key] = b
+            # LRU eviction when the map exceeds its budget. Drop the
+            # least-recently-used entries (front of the OrderedDict).
+            while len(self._buckets) > self._max_buckets:
+                self._buckets.popitem(last=False)
             return b
 
-    def check(self, ip: str, path: str) -> tuple[bool, float, str]:
-        """Return (allowed, retry_after_ms, route_class)."""
+    def check(
+        self,
+        ip: str,
+        path: str,
+        api_key: Optional[str] = None,
+    ) -> tuple[bool, float, str, str]:
+        """Return ``(allowed, retry_after_ms, route_class, scope)``.
+
+        Evaluates the IP bucket first; only consults the per-key bucket
+        when the IP bucket admitted the request AND ``api_key`` is
+        non-empty. BOTH dimensions must permit. ``scope`` is the
+        dimension that tripped on rejection, or ``"ok"`` when allowed.
+        If the per-key check trips after the IP check passed, the IP
+        token is refunded so a deny on one dimension does not silently
+        drain the other.
+
+        The IP-first short-circuit also closes a memory-DoS vector: a
+        client whose IP bucket is already empty cannot force creation
+        of new ``(api_key, route_class)`` entries by rotating bearer
+        tokens — the per-key bucket is only allocated for requests we
+        were going to evaluate anyway. ``_buckets`` therefore grows at
+        the rate of *admitted* IPs × keys × route classes, not at the
+        rate of incoming requests.
+        """
         klass = classify(path)
-        bucket = self._bucket_for(ip, klass)
-        allowed, retry_ms = bucket.take()
-        return allowed, retry_ms, klass
+        ip_bucket = self._bucket_for("ip", ip, klass)
+        ip_allowed, ip_retry = ip_bucket.take()
+        if not ip_allowed:
+            # IP already over budget — do not allocate or touch the
+            # per-key bucket. Scope reports "ip" because that is the
+            # dimension that tripped; the caller is not being charged
+            # for a key bucket that was never created.
+            return False, ip_retry, klass, "ip"
+        if not api_key:
+            return True, 0.0, klass, "ok"
+        key_bucket = self._bucket_for("api_key", _hash_key(api_key), klass)
+        key_allowed, key_retry = key_bucket.take()
+        if key_allowed:
+            return True, 0.0, klass, "ok"
+        # Key bucket tripped — refund the IP token we just consumed so
+        # this one rejection only costs one bucket's worth of tokens.
+        ip_bucket.refund()
+        return False, key_retry, klass, "api_key"
 
     def reset(self) -> None:
         """Test hook — drop all buckets."""
@@ -219,6 +311,22 @@ def _client_ip(request: Request, trust_proxy: bool) -> str:
     return "anonymous"
 
 
+def _bearer_token(request: Request) -> Optional[str]:
+    """Extract the Bearer token from the Authorization header for
+    per-key bucketing. Returns ``None`` if the header is absent or
+    malformed — the auth middleware will reject malformed headers
+    further down the pipeline, this is just opportunistic identification
+    for the limiter."""
+    header = request.headers.get("authorization") or request.headers.get("Authorization")
+    if not header:
+        return None
+    scheme, _, token = header.partition(" ")
+    if scheme.strip().lower() != "bearer":
+        return None
+    token = token.strip()
+    return token or None
+
+
 class RateLimitMiddleware(BaseHTTPMiddleware):
     """Drop-in middleware. Inactive when ``disabled=True``."""
 
@@ -243,7 +351,10 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             return await call_next(request)
 
         ip = _client_ip(request, self._trust_proxy)
-        allowed, retry_ms, klass = self._limiter.check(ip, request.url.path)
+        api_key = _bearer_token(request)
+        allowed, retry_ms, klass, scope = self._limiter.check(
+            ip, request.url.path, api_key=api_key,
+        )
         if not allowed:
             retry_int = int(retry_ms)
             return JSONResponse(
@@ -252,9 +363,10 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                     "detail": {
                         "error": "rate_limit_exceeded",
                         "reason": klass,
+                        "scope": scope,
                         "message": (
-                            f"Too many requests on the '{klass}' bucket. "
-                            f"Retry in ~{retry_int} ms."
+                            f"Too many requests on the '{klass}' bucket "
+                            f"(scope={scope}). Retry in ~{retry_int} ms."
                         ),
                         "retry_after_ms": retry_int,
                     }
@@ -262,6 +374,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                 headers={
                     "Retry-After": str(max(1, int(retry_ms / 1000))),
                     "X-RateLimit-Class": klass,
+                    "X-RateLimit-Scope": scope,
                 },
             )
         return await call_next(request)

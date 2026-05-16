@@ -289,12 +289,17 @@ def test_log_redaction_masks_known_shapes():
         "token=ghp_abcdefghij1234567890klmn",
         "anth=sk-ant-abcdefghij1234567890klmnopqrst",
         "hash=" + ("a" * 40),
+        # Groq key shape (gsk_ prefix + 20+ alphanumerics).
+        "groq=gsk_abcdefghij1234567890klmn",
+        # Google AI Studio / GCP key shape (AIza + 35 url-safe chars).
+        "gemini=AIzaSyA-abcdefghij1234567890_klmnopqrstuv",
     ]
     forbidden_substrings = (
         "supersecretvalue1234567890",
         "abcdefghij1234567890klmn",
         "abcdefghij1234567890klmnopqrst",
         "a" * 40,
+        "SyA-abcdefghij1234567890_klmnopqrstuv",
     )
     for raw in cases:
         out = redact(raw)
@@ -318,3 +323,295 @@ def test_diagnostics_reports_security_layers():
     assert "rate_limit_enabled" in sec
     assert "frame_options" in sec
     assert "body_size_limit_bytes" in sec
+
+
+# ── Tool sandbox — SSRF policy (_validate_fetch_url) ─────────────────────────
+
+
+def _import_tools():
+    """Import ``tools`` with a scoped workspace so the module-level
+    ``_resolve_workspace_root`` does not refuse on machines where the
+    backend's parent happens to be ``/``."""
+    import importlib
+    import tempfile
+    os.environ.setdefault("GAUNTLET_WORKSPACE", tempfile.gettempdir())
+    sys.modules.pop("tools", None)
+    return importlib.import_module("tools")
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "http://127.0.0.1/admin",          # IPv4 loopback literal
+        "http://[::1]/",                    # IPv6 loopback literal
+        "http://10.0.0.1/internal",         # RFC1918
+        "http://192.168.1.1/router",        # RFC1918
+        "http://169.254.169.254/latest",    # AWS / GCP metadata
+        "http://2130706433/",               # 127.0.0.1 in decimal
+        "http://0177.0.0.1/",               # 127.0.0.1 in octal
+        "ftp://example.com/",               # disallowed scheme
+        "file:///etc/passwd",               # disallowed scheme
+        "gopher://example.com/",            # disallowed scheme
+        "http://user:pass@example.com/",    # userinfo
+        "http:///no-host",                  # missing hostname
+    ],
+)
+def test_ssrf_validate_fetch_url_rejects(url: str):
+    """Every literal-private / metadata / weird-scheme / userinfo URL
+    must trip the deny-by-default fetch policy. Adding a case here is
+    the canonical way to extend the SSRF contract."""
+    tools = _import_tools()
+    with pytest.raises(tools._UrlRejected):
+        tools._validate_fetch_url(url)
+
+
+def test_ssrf_validate_fetch_url_accepts_public_literal():
+    tools = _import_tools()
+    # Cloudflare's public DNS — stable, public, IPv4.
+    host, port = tools._validate_fetch_url("https://1.1.1.1/")
+    assert host == "1.1.1.1"
+    assert port == 443
+
+
+# ── Tool sandbox — command policy (_check_command_policy) ────────────────────
+
+
+def test_command_policy_empty_argv_rejected():
+    tools = _import_tools()
+    err = tools._check_command_policy([])
+    assert err is not None and "empty" in err
+
+
+def test_command_policy_unknown_binary_rejected():
+    tools = _import_tools()
+    err = tools._check_command_policy(["curl", "https://example.com"])
+    assert err is not None
+    assert "deny-by-default" in err
+
+
+def test_command_policy_safe_binary_admitted():
+    tools = _import_tools()
+    assert tools._check_command_policy(["ls", "-la"]) is None
+    assert tools._check_command_policy(["grep", "-r", "x", "."]) is None
+
+
+def test_command_policy_gated_requires_flag(monkeypatch):
+    tools = _import_tools()
+    monkeypatch.setattr(tools, "AGENT_ALLOW_CODE_EXEC", False)
+    err = tools._check_command_policy(["python3", "-c", "print(1)"])
+    assert err is not None
+    assert "GAUNTLET_ALLOW_CODE_EXEC" in err
+
+
+def test_command_policy_gated_admitted_when_flag_on(monkeypatch):
+    tools = _import_tools()
+    monkeypatch.setattr(tools, "AGENT_ALLOW_CODE_EXEC", True)
+    assert tools._check_command_policy(["python3", "-c", "print(1)"]) is None
+
+
+def test_command_policy_find_exec_rejected_even_when_gated(monkeypatch):
+    """``find -exec`` is the canonical escape from a read-only file
+    walker into arbitrary code execution. Even with the gate flipped
+    on, the per-binary forbidden-arg check must veto it."""
+    tools = _import_tools()
+    monkeypatch.setattr(tools, "AGENT_ALLOW_CODE_EXEC", True)
+    for variant in (
+        ["find", ".", "-exec", "rm", "{}", ";"],
+        ["find", ".", "-execdir", "rm", "{}", ";"],
+        ["find", ".", "-delete"],
+        ["find", ".", "-fprint", "/tmp/x"],
+    ):
+        err = tools._check_command_policy(variant)
+        assert err is not None, f"find escape leaked: {variant}"
+        assert "not allowed" in err
+
+
+# ── Tool sandbox — argv path guard (_check_argv_paths) ───────────────────────
+
+
+def test_argv_paths_rejects_absolute():
+    tools = _import_tools()
+    err = tools.RunCommandTool._check_argv_paths(["cat", "/etc/passwd"])
+    assert err is not None and "absolute" in err.lower()
+
+
+def test_argv_paths_rejects_parent_traversal():
+    tools = _import_tools()
+    for variant in (
+        ["cat", "../etc/passwd"],
+        ["cat", "./../etc/passwd"],
+        ["cat", "foo/../../bar"],
+    ):
+        err = tools.RunCommandTool._check_argv_paths(variant)
+        assert err is not None, f"traversal leaked: {variant}"
+        assert "parent traversal" in err
+
+
+def test_argv_paths_rejects_windows_absolute():
+    tools = _import_tools()
+    err = tools.RunCommandTool._check_argv_paths(["cat", r"C:\Windows\System32"])
+    assert err is not None and "absolute" in err.lower()
+
+
+def test_argv_paths_allows_workspace_relative():
+    tools = _import_tools()
+    assert (
+        tools.RunCommandTool._check_argv_paths(
+            ["grep", "-r", "TODO", "src/"]
+        )
+        is None
+    )
+
+
+def test_argv_paths_allows_dotted_filename():
+    """A file literally named ``..foo`` is unusual but legal and not
+    a traversal. Make sure the split-based check does not over-reject."""
+    tools = _import_tools()
+    assert (
+        tools.RunCommandTool._check_argv_paths(["cat", "..foo"]) is None
+    )
+
+
+# ── Per-API-key rate limit (Layer 2 extension) ───────────────────────────────
+
+
+def test_rate_limit_ip_reject_skips_per_key_bucket_creation():
+    """When the IP bucket already denies, the limiter must NOT allocate
+    a per-key bucket. Closes a memory-DoS where a client whose IP is
+    already capped rotates bearer tokens to force unbounded growth of
+    the bucket map. Verified by inspecting the bucket store directly
+    after the rejection."""
+    from rate_limit import RateLimiter, _hash_key
+    limiter = RateLimiter()
+    klass = "read"  # /diagnostics — burst 30
+    ip = "10.1.2.3"
+    # Drain the IP bucket without any API key.
+    for _ in range(40):
+        allowed, _retry, k, scope = limiter.check(ip, "/diagnostics")
+        if not allowed:
+            assert scope == "ip"
+            assert k == klass
+            break
+    # Verify the IP bucket exists, then send a request WITH a rotating
+    # bearer token: the per-key bucket must NOT be created.
+    assert ("ip", ip, klass) in limiter._buckets
+    rotated_keys = [f"attacker-token-{i}" for i in range(50)]
+    for tok in rotated_keys:
+        allowed, _retry, _k, scope = limiter.check(
+            ip, "/diagnostics", api_key=tok,
+        )
+        assert not allowed
+        assert scope == "ip"
+    # Bucket map must hold only the one IP bucket and nothing per-key.
+    per_key_entries = [
+        k for k in limiter._buckets.keys() if k[0] == "api_key"
+    ]
+    assert per_key_entries == [], (
+        f"per-key buckets created despite IP rejection: {per_key_entries}"
+    )
+
+
+def test_rate_limit_per_api_key_caps_across_ips():
+    """A leaked key cycling through synthetic IPs must still be capped
+    on the per-key bucket. Drives the limiter directly so we can vary
+    the IP without the TestClient's fixed source address."""
+    from rate_limit import RateLimiter
+    limiter = RateLimiter()
+    key = "leaked-key-xyz"
+    # /diagnostics → "read" class: burst 30, refill 10/s.
+    saw_api_key_reject = False
+    for i in range(60):
+        allowed, _retry, _klass, scope = limiter.check(
+            ip=f"10.0.0.{i % 250}",   # rotate IPs so per-IP never trips
+            path="/diagnostics",
+            api_key=key,
+        )
+        if not allowed and scope == "api_key":
+            saw_api_key_reject = True
+            break
+    assert saw_api_key_reject, (
+        "per-key bucket failed to cap a key cycling through IPs"
+    )
+
+
+def test_rate_limit_scope_in_envelope():
+    client, _ = _fresh_client(
+        {"GAUNTLET_RATE_LIMIT_DISABLED": "0", "GAUNTLET_API_KEY": "k"}
+    )
+    last = None
+    for _ in range(60):
+        r = client.get("/diagnostics", headers={"Authorization": "Bearer k"})
+        if r.status_code == 429:
+            last = r
+            break
+    assert last is not None, "rate limiter never tripped"
+    body = last.json()
+    assert body["detail"]["scope"] in ("ip", "api_key")
+    assert last.headers.get("X-RateLimit-Scope") in ("ip", "api_key")
+
+
+# ── Workspace-root fail-closed guard ─────────────────────────────────────────
+
+
+def test_rate_limit_lru_eviction_bounds_bucket_count():
+    """The bucket map must not grow without bound. After many distinct
+    IPs the LRU eviction caps the dict at ``max_buckets`` entries."""
+    from rate_limit import RateLimiter
+    limiter = RateLimiter(max_buckets=100)
+    for i in range(500):
+        limiter.check(ip=f"10.{i // 256}.{(i // 16) % 16}.{i % 16}", path="/diagnostics")
+    assert len(limiter._buckets) <= 100, (
+        f"bucket map exceeded cap: {len(limiter._buckets)}"
+    )
+
+
+def test_composer_ttlstore_evicts_by_byte_budget():
+    """The composer ``_TTLStore`` evicts in LRU order when the byte
+    budget is exceeded, even if the entry-count cap is not hit. A
+    single jumbo payload cannot pin RAM."""
+    import asyncio as _asyncio
+    from uuid import uuid4
+    import composer as _composer
+
+    store = _composer._TTLStore(
+        ttl_seconds=60, max_entries=1000, max_bytes=10_000,
+    )
+
+    async def _exercise():
+        # 20 entries of ~2 KB each → 40 KB total, well over the 10 KB
+        # budget. Eviction must keep the byte total within the cap.
+        for _ in range(20):
+            await store.put(uuid4(), "x" * 2000)
+        return store._bytes, len(store._data)
+
+    bytes_total, entry_count = _asyncio.run(_exercise())
+    assert bytes_total <= 10_000, (
+        f"byte budget overrun: {bytes_total} > 10000"
+    )
+    # Should have evicted enough entries to fit the budget — exact
+    # count depends on per-entry overhead but must be < 20.
+    assert entry_count < 20
+
+
+def test_workspace_root_refuses_filesystem_root(monkeypatch):
+    """``_resolve_workspace_root`` must refuse to resolve to ``/``
+    (or any other anchor) so a Dockerfile that forgets
+    ``GAUNTLET_WORKSPACE`` cannot silently expose the container root
+    to SAFE commands. Import the module under a safe env first
+    (otherwise the module-level ``TOOL_WORKSPACE_ROOT = _resolve...()``
+    would crash the import); then patch the env and re-call the
+    resolver, which reads env at call time."""
+    tools_mod = _import_tools()
+    for bad in ("/", "C:\\", "C:/"):
+        monkeypatch.setenv("GAUNTLET_WORKSPACE", bad)
+        try:
+            tools_mod._resolve_workspace_root()
+        except RuntimeError as exc:
+            assert "filesystem root" in str(exc), exc
+        else:
+            # On non-Windows hosts the Windows anchors won't round-trip
+            # through Path(..).resolve() to their own anchor; skip those
+            # cases when they resolve elsewhere rather than failing the
+            # test. The ``/`` case is the one that matters in CI.
+            if bad == "/":
+                pytest.fail(f"resolver accepted {bad!r}")

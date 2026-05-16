@@ -40,13 +40,28 @@ from typing import Any, Iterable
 
 # Order matters: the more specific (Authorization: full line) runs
 # before the looser bearer-only pattern so we don't double-mask.
+#
+# Provider key shapes covered explicitly (most-specific-first so the
+# generic ``=<40+>`` fallback at the end never has to do the work):
+#   * GitHub PAT classic        ``ghp_<20+>``
+#   * GitHub PAT fine-grained   ``github_pat_<20+>``
+#   * OpenAI                    ``sk-<16+>``
+#   * Anthropic                 ``sk-ant-<16+>``   (matched before sk- by length)
+#   * Groq                      ``gsk_<20+>``       (added 2026-05)
+#   * Google AI Studio / GCP    ``AIza<35 chars>``  (added 2026-05) —
+#       fixed 39-char shape; doesn't match the generic ``=<40+>`` floor.
 _PATTERNS: tuple[tuple[re.Pattern[str], str], ...] = (
     (re.compile(r"Authorization:\s*\S+", re.IGNORECASE), "Authorization: ****"),
     (re.compile(r"Bearer\s+[A-Za-z0-9._\-]+"), "Bearer ****"),
     (re.compile(r"ghp_[A-Za-z0-9]{20,}"), "ghp_****"),
     (re.compile(r"github_pat_[A-Za-z0-9_]{20,}"), "github_pat_****"),
-    (re.compile(r"sk-[A-Za-z0-9_\-]{16,}"), "sk-****"),
     (re.compile(r"sk-ant-[A-Za-z0-9_\-]{16,}"), "sk-ant-****"),
+    (re.compile(r"sk-[A-Za-z0-9_\-]{16,}"), "sk-****"),
+    (re.compile(r"gsk_[A-Za-z0-9]{20,}"), "gsk_****"),
+    # Google API key shape is fixed-width: ``AIza`` + 35 chars from the
+    # url-safe alphabet. Anchor the trailing length so we don't eat
+    # adjacent text on a non-key match.
+    (re.compile(r"AIza[A-Za-z0-9_\-]{35}"), "AIza****"),
     # Generic "thing=<40+ char secret>". The minimum length floor was 32
     # but caught legit values like long numeric IDs and SHA-1 digests
     # (40 hex chars exactly — kept covered by tightening to 40, not 41,

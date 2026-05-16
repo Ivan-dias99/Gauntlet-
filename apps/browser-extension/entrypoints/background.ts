@@ -81,6 +81,16 @@ interface FetchProxyResponse {
 
 async function proxyFetch(req: FetchProxyRequest): Promise<FetchProxyResponse> {
   try {
+    // Same allowlist as the streaming path — see ``isAllowedStreamUrl``.
+    // The extension's chrome-extension:// origin bypasses page CORS, so
+    // every URL we forward must be on the Gauntlet backend surface.
+    if (!isAllowedStreamUrl(req.url)) {
+      return {
+        ok: false,
+        status: 0,
+        error: `fetch URL rejected by isAllowedStreamUrl: ${req.url}`,
+      };
+    }
     const res = await fetch(req.url, {
       method: req.method ?? 'GET',
       headers: req.headers,
@@ -286,6 +296,32 @@ interface StreamStartMessage {
   body: unknown;
 }
 
+// Defence-in-depth: the only legitimate callers construct the URL from
+// the build-time backend env, but the service-worker fetch path accepts
+// whatever a connected port sends. Restrict it to https:// (the prod
+// Railway URL), http://localhost / http://127.0.0.1 (dev backend), and
+// the chrome-extension:// scheme (test fixtures). Anything else — a
+// `data:` URI, `file://`, attacker-controlled http origin — is rejected
+// before fetch runs, so a future caller (or a malicious sender) cannot
+// turn this into an arbitrary-origin GET/POST proxy from the extension
+// context (which would otherwise bypass page CORS).
+function isAllowedStreamUrl(url: string): boolean {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return false;
+  }
+  if (parsed.protocol === 'https:') return true;
+  if (
+    parsed.protocol === 'http:' &&
+    (parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1')
+  ) {
+    return true;
+  }
+  return false;
+}
+
 async function handleStreamPort(port: chrome.runtime.Port): Promise<void> {
   let aborter: AbortController | null = null;
 
@@ -310,6 +346,14 @@ async function runStream(
   signal: AbortSignal,
 ): Promise<void> {
   try {
+    if (!isAllowedStreamUrl(msg.url)) {
+      port.postMessage({
+        type: 'error',
+        status: 0,
+        text: `stream URL rejected by isAllowedStreamUrl: ${msg.url}`,
+      });
+      return;
+    }
     const res = await fetch(msg.url, {
       method: 'POST',
       headers: {

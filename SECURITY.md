@@ -20,7 +20,7 @@ Email the maintainer at the address on the GitHub profile
 (`https://github.com/Ivan-dias99`), or open a private security
 advisory via GitHub:
 
-  `https://github.com/Ivan-dias99/Aiinterfaceshelldesign/security/advisories/new`
+  `https://github.com/Ivan-dias99/Gauntlet-/security/advisories/new`
 
 Include:
 
@@ -58,6 +58,45 @@ findings. Lower-severity issues land in the next minor release.
   build (asserts pubkey is non-empty). If you find a way to bypass
   the assertion, that's a release-supply-chain finding — high
   priority.
+
+## Persistent state — trust model
+
+The backend writes operational state as plaintext JSON under
+`GAUNTLET_DATA_DIR` (default `/data` in the container,
+`backend/data/` on a developer checkout):
+
+* `failure_memory.json` — judge-rejection ledger.
+* `runs.json` — agent run log (prompts, tool calls, outcomes).
+* `spine.json` — chamber autosave snapshot.
+* `memory_records.json` — operator-callable memory store.
+* `composer_settings.json` — per-domain composer policy.
+
+**These files are NOT encrypted at rest** and carry no integrity
+signature. The threat model is *trust the volume*: the mounted
+volume (Railway / Fly / Render) is the trust boundary; anyone with
+read access to the volume already has read access to the secrets
+that the backend would decrypt with. Adding `fernet` / `age` would
+move the key onto the same volume (or into the same env the
+backend reads), so the gain over the platform's own at-rest
+encryption is theatre, not defence.
+
+The mitigations we actually rely on:
+
+* **Operator hygiene** — the volume only carries operator state, no
+  third-party PII. Don't paste secrets into the cápsula composer.
+* **Backup discipline** — `backend/backup.py` copies the same JSONs;
+  treat backup storage as equally sensitive (offsite copies belong on
+  encrypted storage *outside* this repo's trust boundary, and the
+  restore path must be tested before the first incident).
+* **No silent writes** — `PERSISTENCE_EPHEMERAL` flips a startup banner
+  warning when `GAUNTLET_DATA_DIR` is unmounted, so an operator who
+  expected persistence sees the breadcrumb at boot rather than after
+  a restart wipes state.
+
+If you have a concrete scenario where these files contain data that
+*would* survive the encrypt-the-volume-key argument (cross-tenant
+deployments, multi-operator volumes, regulated PII), open a security
+advisory — it's a model change, not a code fix.
 
 ## Out of scope
 
