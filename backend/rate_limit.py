@@ -190,26 +190,47 @@ def _hash_key(api_key: str) -> str:
     return "k:" + hashlib.sha256(api_key.encode("utf-8")).hexdigest()
 
 
+# Maximum number of buckets the limiter holds before LRU eviction
+# kicks in. Under honest load the working set is small (active IPs ×
+# active keys × 6 route classes); a hard cap defends against memory
+# pressure when the working set explodes (botnet IPs, key rotation,
+# or attacker probing). Eviction is by last-touched, which is the
+# behaviour you want — recently-active callers stay budgeted, idle
+# callers re-allocate fresh buckets (full burst) on their next hit.
+_DEFAULT_MAX_BUCKETS = 20_000
+
+
 class RateLimiter:
     """In-memory token-bucket store keyed by
     ``(scope, identifier, route_class)``. ``scope`` is ``"ip"`` or
-    ``"api_key"`` so the two dimensions never collide."""
+    ``"api_key"`` so the two dimensions never collide. LRU-evicting
+    when the bucket count exceeds ``max_buckets`` so the map cannot
+    grow without bound across process lifetime."""
 
-    def __init__(self) -> None:
-        self._buckets: dict[tuple[str, str, str], _Bucket] = {}
+    def __init__(self, max_buckets: int = _DEFAULT_MAX_BUCKETS) -> None:
+        # OrderedDict so we can ``move_to_end`` on touch and
+        # ``popitem(last=False)`` to drop the LRU entry.
+        from collections import OrderedDict
+        self._buckets: "OrderedDict[tuple[str, str, str], _Bucket]" = OrderedDict()
+        self._max_buckets = int(max_buckets)
         self._lock = threading.Lock()
 
     def _bucket_for(self, scope: str, identifier: str, route_class: str) -> _Bucket:
         key = (scope, identifier, route_class)
-        b = self._buckets.get(key)
-        if b is not None:
-            return b
         with self._lock:
             b = self._buckets.get(key)
-            if b is None:
-                spec = ROUTE_CLASSES.get(route_class, ROUTE_CLASSES["default"])
-                b = _Bucket(spec)
-                self._buckets[key] = b
+            if b is not None:
+                # Touch — move to MRU end so eviction targets the
+                # genuinely cold callers, not the active one.
+                self._buckets.move_to_end(key)
+                return b
+            spec = ROUTE_CLASSES.get(route_class, ROUTE_CLASSES["default"])
+            b = _Bucket(spec)
+            self._buckets[key] = b
+            # LRU eviction when the map exceeds its budget. Drop the
+            # least-recently-used entries (front of the OrderedDict).
+            while len(self._buckets) > self._max_buckets:
+                self._buckets.popitem(last=False)
             return b
 
     def check(

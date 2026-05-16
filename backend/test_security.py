@@ -289,12 +289,17 @@ def test_log_redaction_masks_known_shapes():
         "token=ghp_abcdefghij1234567890klmn",
         "anth=sk-ant-abcdefghij1234567890klmnopqrst",
         "hash=" + ("a" * 40),
+        # Groq key shape (gsk_ prefix + 20+ alphanumerics).
+        "groq=gsk_abcdefghij1234567890klmn",
+        # Google AI Studio / GCP key shape (AIza + 35 url-safe chars).
+        "gemini=AIzaSyA-abcdefghij1234567890_klmnopqrstuv",
     ]
     forbidden_substrings = (
         "supersecretvalue1234567890",
         "abcdefghij1234567890klmn",
         "abcdefghij1234567890klmnopqrst",
         "a" * 40,
+        "SyA-abcdefghij1234567890_klmnopqrstuv",
     )
     for raw in cases:
         out = redact(raw)
@@ -546,6 +551,46 @@ def test_rate_limit_scope_in_envelope():
 
 
 # ── Workspace-root fail-closed guard ─────────────────────────────────────────
+
+
+def test_rate_limit_lru_eviction_bounds_bucket_count():
+    """The bucket map must not grow without bound. After many distinct
+    IPs the LRU eviction caps the dict at ``max_buckets`` entries."""
+    from rate_limit import RateLimiter
+    limiter = RateLimiter(max_buckets=100)
+    for i in range(500):
+        limiter.check(ip=f"10.{i // 256}.{(i // 16) % 16}.{i % 16}", path="/diagnostics")
+    assert len(limiter._buckets) <= 100, (
+        f"bucket map exceeded cap: {len(limiter._buckets)}"
+    )
+
+
+def test_composer_ttlstore_evicts_by_byte_budget():
+    """The composer ``_TTLStore`` evicts in LRU order when the byte
+    budget is exceeded, even if the entry-count cap is not hit. A
+    single jumbo payload cannot pin RAM."""
+    import asyncio as _asyncio
+    from uuid import uuid4
+    import composer as _composer
+
+    store = _composer._TTLStore(
+        ttl_seconds=60, max_entries=1000, max_bytes=10_000,
+    )
+
+    async def _exercise():
+        # 20 entries of ~2 KB each → 40 KB total, well over the 10 KB
+        # budget. Eviction must keep the byte total within the cap.
+        for _ in range(20):
+            await store.put(uuid4(), "x" * 2000)
+        return store._bytes, len(store._data)
+
+    bytes_total, entry_count = _asyncio.run(_exercise())
+    assert bytes_total <= 10_000, (
+        f"byte budget overrun: {bytes_total} > 10000"
+    )
+    # Should have evicted enough entries to fit the budget — exact
+    # count depends on per-entry overhead but must be < 20.
+    assert entry_count < 20
 
 
 def test_workspace_root_refuses_filesystem_root(monkeypatch):

@@ -74,7 +74,18 @@ router = APIRouter(prefix="/composer", tags=["composer"])
 _CONTEXT_TTL_SECONDS = 300       # 5 min
 _INTENT_TTL_SECONDS = 300
 _PREVIEW_TTL_SECONDS = 600       # 10 min — survives a coffee break
-_MAX_ENTRIES = 1000              # LRU cap per store
+_MAX_ENTRIES = 1000              # LRU cap per store (count dimension)
+# Hard ceiling on total bytes held by a single TTL store. The count cap
+# alone is not enough: a ContextPackage may carry a multi-MB selection
+# blob or screenshot reference, so 1000 entries × multi-MB = arbitrary
+# RAM. With auth disabled (dev) or an over-quota burst, the three
+# stores together could pin the worker. 32 MiB per store ≈ 96 MiB total
+# is generous for the cápsula's real working set and leaves the
+# Railway 512 MiB worker comfortable headroom for the engine + model
+# state. When the byte budget is exceeded we evict in LRU order until
+# the next ``put`` fits — same eviction direction as the count cap, so
+# the two limits work together.
+_MAX_BYTES_PER_STORE = 32 * 1024 * 1024
 
 DEFAULT_REFUSAL = (
     "Não tenho confiança suficiente para responder a isto. "
@@ -82,30 +93,73 @@ DEFAULT_REFUSAL = (
 )
 
 
-class _TTLStore:
-    """Tiny TTL + LRU dict. Async-safe via lock."""
+def _approx_bytes(value: object) -> int:
+    """Cheap upper-bound size estimate for ``value``. We don't need
+    perfect — only a stable proxy big enough to catch multi-MB blobs.
+    Pydantic models expose ``model_dump_json``; everything else falls
+    back to ``str(value)``. Both produce strings whose UTF-8 byte
+    length we can measure without serialising twice."""
+    try:
+        # BaseModel — fastest stable approximation.
+        if hasattr(value, "model_dump_json"):
+            return len(value.model_dump_json().encode("utf-8"))  # type: ignore[union-attr]
+    except Exception:  # noqa: BLE001
+        pass
+    try:
+        return len(str(value).encode("utf-8"))
+    except Exception:  # noqa: BLE001
+        return 0
 
-    def __init__(self, ttl_seconds: int, max_entries: int = _MAX_ENTRIES):
-        self._data: "OrderedDict[UUID, tuple[float, object]]" = OrderedDict()
+
+class _TTLStore:
+    """Tiny TTL + LRU dict. Async-safe via lock. Bounds both the entry
+    count AND the total byte footprint so a single jumbo payload (large
+    screenshot, multi-MB selection blob) cannot pin RAM even when the
+    count cap is nowhere near being hit."""
+
+    def __init__(
+        self,
+        ttl_seconds: int,
+        max_entries: int = _MAX_ENTRIES,
+        max_bytes: int = _MAX_BYTES_PER_STORE,
+    ):
+        self._data: "OrderedDict[UUID, tuple[float, object, int]]" = OrderedDict()
         self._ttl = ttl_seconds
         self._max = max_entries
+        self._max_bytes = max_bytes
+        self._bytes = 0
         self._lock = asyncio.Lock()
 
     async def put(self, key: UUID, value: object) -> None:
+        size = _approx_bytes(value)
         async with self._lock:
-            self._data[key] = (time.monotonic() + self._ttl, value)
+            # Replacing an existing entry — credit back its size first
+            # so the post-eviction loop doesn't double-count.
+            prev = self._data.pop(key, None)
+            if prev is not None:
+                self._bytes -= prev[2]
+            self._data[key] = (time.monotonic() + self._ttl, value, size)
+            self._bytes += size
             self._data.move_to_end(key)
-            while len(self._data) > self._max:
-                self._data.popitem(last=False)
+            # Evict in LRU order until BOTH dimensions fit. Stop when
+            # the store is empty (defensive — should never matter
+            # because a single put cannot exceed _max_bytes without
+            # the operator deliberately uploading an absurd payload).
+            while self._data and (
+                len(self._data) > self._max or self._bytes > self._max_bytes
+            ):
+                _, evicted_entry = self._data.popitem(last=False)
+                self._bytes -= evicted_entry[2]
 
     async def get(self, key: UUID) -> Optional[object]:
         async with self._lock:
             entry = self._data.get(key)
             if entry is None:
                 return None
-            expires_at, value = entry
+            expires_at, value, size = entry
             if time.monotonic() > expires_at:
                 self._data.pop(key, None)
+                self._bytes -= size
                 return None
             self._data.move_to_end(key)
             return value

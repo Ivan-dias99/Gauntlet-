@@ -43,6 +43,78 @@ use tauri_plugin_dialog::DialogExt;
 const MAX_TEXT_BYTES: usize = 1024 * 1024;
 const MAX_BINARY_BYTES: usize = 4 * 1024 * 1024;
 
+// Picker-consent ledger. ``pick_file`` / ``pick_save_path`` are the
+// only legitimate way a path lands here; every read_*/write_* command
+// validates the canonicalised request path is present before touching
+// the filesystem. Bypassing this would mean a compromised webview
+// could call ``read_text_file_at("/home/user/.ssh/id_rsa")`` directly
+// — the picker UI is the consent gate, this ledger enforces it.
+//
+// Entries are NOT consumed on use: the operator may legitimately
+// re-read or re-write to a path they just confirmed (e.g. save a
+// draft, edit, save again). Stale entries are evicted by an LRU cap
+// to bound memory across a long session.
+use std::collections::VecDeque;
+use std::sync::OnceLock;
+
+const PICKER_LEDGER_CAP: usize = 256;
+static PICKER_LEDGER: OnceLock<Mutex<VecDeque<PathBuf>>> = OnceLock::new();
+
+fn picker_ledger() -> &'static Mutex<VecDeque<PathBuf>> {
+    PICKER_LEDGER.get_or_init(|| Mutex::new(VecDeque::with_capacity(PICKER_LEDGER_CAP)))
+}
+
+fn picker_remember(path: &std::path::Path) {
+    let Ok(canonical) = std::fs::canonicalize(path).or_else(|_| {
+        // For pick_save_path the file may not exist yet — canonicalise
+        // the parent and re-attach the file name so we still anchor
+        // the consent against the operator's chosen directory.
+        if let (Some(parent), Some(name)) = (path.parent(), path.file_name()) {
+            std::fs::canonicalize(parent).map(|p| p.join(name))
+        } else {
+            Err(std::io::Error::new(std::io::ErrorKind::NotFound, "no parent"))
+        }
+    }) else {
+        return;
+    };
+    let Ok(mut ledger) = picker_ledger().lock() else {
+        return;
+    };
+    // De-dup so repeated picks of the same path don't bloat the ledger.
+    if !ledger.iter().any(|p| p == &canonical) {
+        ledger.push_back(canonical);
+        while ledger.len() > PICKER_LEDGER_CAP {
+            ledger.pop_front();
+        }
+    }
+}
+
+fn picker_authorised(path: &std::path::Path) -> Result<PathBuf, String> {
+    // Canonicalise the request — if the file exists, this resolves
+    // symlinks and ``..`` segments so a TOCTOU race against the
+    // metadata check cannot re-target the read to a different inode.
+    // If the file doesn't exist (write_*_at to a new path), fall back
+    // to canonicalising the parent + reattaching the file name.
+    let canonical = std::fs::canonicalize(path).or_else(|_| {
+        if let (Some(parent), Some(name)) = (path.parent(), path.file_name()) {
+            std::fs::canonicalize(parent).map(|p| p.join(name))
+        } else {
+            Err(std::io::Error::new(std::io::ErrorKind::NotFound, "no parent"))
+        }
+    }).map_err(|e| format!("cannot canonicalise {}: {e}", path.display()))?;
+    let ledger = picker_ledger()
+        .lock()
+        .map_err(|e| format!("picker ledger poisoned: {e}"))?;
+    if ledger.iter().any(|p| p == &canonical) {
+        Ok(canonical)
+    } else {
+        Err(format!(
+            "fs_origin_denied: {} was not authorised by a recent pick_file / pick_save_path",
+            path.display()
+        ))
+    }
+}
+
 #[derive(Serialize, Clone, Debug)]
 pub struct WindowInfo {
     pub title: String,
@@ -368,6 +440,9 @@ async fn pick_file(
     let path_buf: PathBuf = file_path
         .into_path()
         .map_err(|e| format!("file picker returned a non-filesystem URI: {e}"))?;
+    // Operator just confirmed this path through the OS dialog — record
+    // it so the read_*/write_* commands accept it without re-prompting.
+    picker_remember(&path_buf);
     let name = path_buf
         .file_name()
         .map(|s| s.to_string_lossy().to_string())
@@ -380,7 +455,12 @@ async fn pick_file(
 
 #[tauri::command]
 fn read_text_file_at(path: String) -> Result<String, String> {
-    let buf = PathBuf::from(&path);
+    // ``picker_authorised`` canonicalises the request path (resolving
+    // symlinks + ``..``) before checking the consent ledger AND returns
+    // the canonical path we'll actually read — that closes both H2
+    // (caller-supplied arbitrary path) and M3 (TOCTOU between metadata
+    // and read, since we operate on the resolved inode path).
+    let buf = picker_authorised(&PathBuf::from(&path))?;
     let metadata = std::fs::metadata(&buf).map_err(|e| format!("stat {path}: {e}"))?;
     if !metadata.is_file() {
         return Err(format!("{path} is not a regular file"));
@@ -436,12 +516,15 @@ async fn pick_save_path(
     let path_buf: PathBuf = file_path
         .into_path()
         .map_err(|e| format!("save picker returned a non-filesystem URI: {e}"))?;
+    // Operator picked a save destination — admit it into the consent
+    // ledger so write_text_file_at / write_file_base64_at accept it.
+    picker_remember(&path_buf);
     Ok(Some(path_buf.to_string_lossy().to_string()))
 }
 
 #[tauri::command]
 fn write_text_file_at(path: String, content: String) -> Result<u64, String> {
-    let buf = PathBuf::from(&path);
+    let buf = picker_authorised(&PathBuf::from(&path))?;
     if let Some(parent) = buf.parent() {
         if !parent.as_os_str().is_empty() && !parent.exists() {
             return Err(format!(
@@ -457,7 +540,7 @@ fn write_text_file_at(path: String, content: String) -> Result<u64, String> {
 
 #[tauri::command]
 fn write_file_base64_at(path: String, base64: String) -> Result<u64, String> {
-    let buf = PathBuf::from(&path);
+    let buf = picker_authorised(&PathBuf::from(&path))?;
     if let Some(parent) = buf.parent() {
         if !parent.as_os_str().is_empty() && !parent.exists() {
             return Err(format!(
@@ -475,7 +558,7 @@ fn write_file_base64_at(path: String, base64: String) -> Result<u64, String> {
 
 #[tauri::command]
 fn read_file_base64_at(path: String) -> Result<Base64Payload, String> {
-    let buf = PathBuf::from(&path);
+    let buf = picker_authorised(&PathBuf::from(&path))?;
     let metadata = std::fs::metadata(&buf).map_err(|e| format!("stat {path}: {e}"))?;
     if !metadata.is_file() {
         return Err(format!("{path} is not a regular file"));
@@ -548,6 +631,59 @@ const SHELL_ALLOWLIST: &[&str] = &[
 ];
 const SHELL_OUTPUT_CAP: usize = 256 * 1024;
 
+// Per-binary forbidden flags. The allowlist above gates which binary
+// can be invoked at all; this set gates which flags that binary may
+// carry. Several otherwise read-only binaries have escape hatches that
+// turn them into general-purpose code runners — git -c can rewrite
+// core.sshCommand / core.pager into arbitrary execution, find -exec
+// runs arbitrary commands, etc. Mirror the backend's
+// ``_GIT_FORBIDDEN_FLAGS`` / ``_FORBIDDEN_ARGS`` policy from
+// ``backend/tools.py`` so the desktop and backend agree on what is
+// reachable.
+//
+// A forbidden flag matches if any arg equals the token OR starts with
+// ``token=`` (catches both ``-c core.pager=...`` and
+// ``-c=core.pager=...`` shapes; git rejects the second form itself
+// but we reject the shape regardless).
+fn shell_forbidden_flags(binary: &str) -> &'static [&'static str] {
+    match binary {
+        "git" => &[
+            "-c", "-C", "-P", "-h", "--help", "--paginate",
+            "--exec-path", "--config-env", "--upload-pack", "--receive-pack",
+            "--work-tree", "--git-dir", "--namespace", "--bare",
+        ],
+        "find" => &[
+            "-exec", "-execdir", "-ok", "-okdir",
+            "-delete", "-fprint", "-fprintf", "-fls",
+        ],
+        // grep -f reads patterns from a file; -P (PCRE) has known
+        // catastrophic-backtracking shapes. Neither is RCE but both
+        // shift the cost model in ways the allowlist's "cheap reads"
+        // intent does not cover — keep them off the table.
+        "grep" => &["-f", "--file", "-P", "--perl-regexp"],
+        _ => &[],
+    }
+}
+
+fn shell_arg_rejected(binary: &str, arg: &str) -> bool {
+    for bad in shell_forbidden_flags(binary) {
+        if arg == *bad {
+            return true;
+        }
+        let prefix = format!("{bad}=");
+        if arg.starts_with(&prefix) {
+            return true;
+        }
+        // Catch compact -cfoo=bar git shape — git itself doesn't
+        // accept it but the lookalike should still be rejected so
+        // future-git changes don't quietly admit it.
+        if binary == "git" && bad == &"-c" && arg.starts_with("-c") && arg != "-c" && arg.contains('=') {
+            return true;
+        }
+    }
+    false
+}
+
 #[tauri::command]
 fn run_shell(
     cmd: String,
@@ -583,10 +719,23 @@ fn run_shell(
         ));
     }
 
+    // Per-binary forbidden-flag check. See ``shell_forbidden_flags``
+    // for the rationale; the backend tool sandbox enforces the same
+    // policy in ``backend/tools.py:_check_command_policy`` /
+    // ``_check_git_args`` — keep them in lockstep.
+    let arg_list: Vec<String> = args.clone().unwrap_or_default();
+    for arg in &arg_list {
+        if shell_arg_rejected(cmd_trimmed, arg) {
+            return Err(format!(
+                "{cmd_trimmed}: argument {arg:?} is not allowed by the per-binary policy"
+            ));
+        }
+    }
+
     let started = std::time::Instant::now();
     let mut command = Command::new(cmd_trimmed);
-    if let Some(args) = args {
-        command.args(args);
+    if !arg_list.is_empty() {
+        command.args(&arg_list);
     }
     if let Some(cwd) = cwd.as_deref() {
         if !cwd.is_empty() {
@@ -938,6 +1087,57 @@ fn get_pill_follow_cursor() -> bool {
 const CU_MAX_TEXT_LEN: usize = 10_000;
 const CU_ALLOWED_WEBVIEW: &str = "main";
 const CU_ORIGIN_DENIED: &str = "cu_origin_denied";
+const CU_RATE_DENIED: &str = "cu_rate_denied";
+
+// Computer-use rate budget. The cápsula's honest workload is a
+// handful of cu_* calls per second (one click, one short cu_type
+// burst per agent step). A runaway agent loop or prompt-injection
+// can fire thousands per second — enough to pin the operator's
+// mouse / keyboard and overwhelm enigo's syscall path. Cap at 30
+// calls / second with a burst of 60 across all cu_* primitives
+// combined, measured by a single shared bucket. When the bucket is
+// empty the call returns ``cu_rate_denied`` with retry-after hints
+// so the JS layer can pace itself.
+const CU_RATE_BURST: u32 = 60;
+const CU_RATE_REFILL_PER_SEC: f64 = 30.0;
+
+struct CuBucket {
+    tokens: f64,
+    last_refill: std::time::Instant,
+}
+
+static CU_RATE_BUCKET: OnceLock<Mutex<CuBucket>> = OnceLock::new();
+
+fn cu_rate_bucket() -> &'static Mutex<CuBucket> {
+    CU_RATE_BUCKET.get_or_init(|| {
+        Mutex::new(CuBucket {
+            tokens: CU_RATE_BURST as f64,
+            last_refill: std::time::Instant::now(),
+        })
+    })
+}
+
+fn cu_take_token() -> Result<(), String> {
+    let mut bucket = cu_rate_bucket()
+        .lock()
+        .map_err(|e| format!("{CU_RATE_DENIED}: bucket mutex poisoned: {e}"))?;
+    let now = std::time::Instant::now();
+    let elapsed = now.duration_since(bucket.last_refill).as_secs_f64();
+    if elapsed > 0.0 {
+        bucket.tokens =
+            (bucket.tokens + elapsed * CU_RATE_REFILL_PER_SEC).min(CU_RATE_BURST as f64);
+        bucket.last_refill = now;
+    }
+    if bucket.tokens >= 1.0 {
+        bucket.tokens -= 1.0;
+        return Ok(());
+    }
+    let deficit = 1.0 - bucket.tokens;
+    let retry_ms = ((deficit / CU_RATE_REFILL_PER_SEC) * 1000.0).max(1.0) as u64;
+    Err(format!(
+        "{CU_RATE_DENIED}: computer-use rate budget exhausted ({CU_RATE_BURST} burst, {CU_RATE_REFILL_PER_SEC:.0}/s sustained); retry in ~{retry_ms} ms"
+    ))
+}
 
 fn cu_new_enigo() -> Result<Enigo, String> {
     Enigo::new(&CuSettings::default()).map_err(|e| e.to_string())
@@ -958,6 +1158,7 @@ fn cu_assert_main_webview(label: &str) -> Result<(), String> {
 #[tauri::command]
 fn cu_mouse_move(webview: tauri::Webview, x: i32, y: i32) -> Result<(), String> {
     cu_assert_main_webview(webview.label())?;
+    cu_take_token()?;
     let mut enigo = cu_new_enigo()?;
     enigo
         .move_mouse(x, y, CuCoordinate::Abs)
@@ -967,6 +1168,7 @@ fn cu_mouse_move(webview: tauri::Webview, x: i32, y: i32) -> Result<(), String> 
 #[tauri::command]
 fn cu_mouse_click(webview: tauri::Webview, button: String) -> Result<(), String> {
     cu_assert_main_webview(webview.label())?;
+    cu_take_token()?;
     let btn = parse_cu_button(&button)?;
     let mut enigo = cu_new_enigo()?;
     enigo
@@ -977,6 +1179,7 @@ fn cu_mouse_click(webview: tauri::Webview, button: String) -> Result<(), String>
 #[tauri::command]
 fn cu_type(webview: tauri::Webview, text: String) -> Result<(), String> {
     cu_assert_main_webview(webview.label())?;
+    cu_take_token()?;
     if text.is_empty() {
         return Err("cu_type: empty text".to_string());
     }
@@ -998,6 +1201,7 @@ fn cu_type(webview: tauri::Webview, text: String) -> Result<(), String> {
 #[tauri::command]
 fn cu_press(webview: tauri::Webview, key: String) -> Result<(), String> {
     cu_assert_main_webview(webview.label())?;
+    cu_take_token()?;
     let k = parse_cu_key(&key)?;
     let mut enigo = cu_new_enigo()?;
     enigo
@@ -1266,4 +1470,103 @@ pub fn run() {
         })
         .run(tauri::generate_context!())
         .expect("error while running gauntlet desktop");
+}
+
+// ── Tests (security helpers) ───────────────────────────────────────────────
+//
+// Pure-function tests for the security-critical helpers. They avoid the
+// Tauri runtime so ``cargo test --tests`` (CI's desktop-smoke step) runs
+// them without spinning up a webview.
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // shell_arg_rejected — H1 / per-binary forbidden flags.
+
+    #[test]
+    fn git_minus_c_is_rejected() {
+        assert!(shell_arg_rejected("git", "-c"));
+        assert!(shell_arg_rejected("git", "-ccore.pager=evil"));
+        assert!(shell_arg_rejected("git", "--config-env=GIT_SSH=evil"));
+    }
+
+    #[test]
+    fn git_upload_pack_is_rejected() {
+        assert!(shell_arg_rejected("git", "--upload-pack"));
+        assert!(shell_arg_rejected("git", "--upload-pack=evil"));
+    }
+
+    #[test]
+    fn git_status_is_allowed() {
+        // ``status`` is a subcommand, not a forbidden flag.
+        assert!(!shell_arg_rejected("git", "status"));
+        assert!(!shell_arg_rejected("git", "--porcelain"));
+    }
+
+    #[test]
+    fn find_exec_family_is_rejected() {
+        for flag in &["-exec", "-execdir", "-ok", "-okdir", "-delete", "-fprint"] {
+            assert!(shell_arg_rejected("find", flag), "find {flag} leaked");
+        }
+    }
+
+    #[test]
+    fn find_name_is_allowed() {
+        assert!(!shell_arg_rejected("find", "-name"));
+        assert!(!shell_arg_rejected("find", "*.rs"));
+    }
+
+    #[test]
+    fn grep_dash_f_is_rejected() {
+        assert!(shell_arg_rejected("grep", "-f"));
+        assert!(shell_arg_rejected("grep", "--file=patterns.txt"));
+        assert!(shell_arg_rejected("grep", "-P"));
+    }
+
+    #[test]
+    fn unknown_binary_has_no_forbidden_flags() {
+        // ls / cat / etc carry no per-binary forbid list — every arg passes.
+        assert!(!shell_arg_rejected("ls", "-la"));
+        assert!(!shell_arg_rejected("cat", "-n"));
+    }
+
+    // picker_authorised — H2 / picker-gated FS.
+
+    #[test]
+    fn picker_authorised_rejects_unrecorded_path() {
+        let temp = std::env::temp_dir().join("gauntlet-picker-test-unrecorded.txt");
+        std::fs::write(&temp, b"unrecorded").unwrap();
+        let err = picker_authorised(&temp).expect_err("should reject");
+        assert!(err.contains("fs_origin_denied"), "unexpected error: {err}");
+    }
+
+    #[test]
+    fn picker_authorised_accepts_recorded_path() {
+        let temp = std::env::temp_dir().join("gauntlet-picker-test-recorded.txt");
+        std::fs::write(&temp, b"recorded").unwrap();
+        picker_remember(&temp);
+        let resolved = picker_authorised(&temp).expect("should accept");
+        assert!(resolved.is_absolute());
+    }
+
+    // cu_take_token — M7 / computer-use rate budget.
+
+    #[test]
+    fn cu_take_token_eventually_denies() {
+        // The bucket is a process-global OnceLock — other tests may have
+        // already drained it. Take until we either see a deny OR we
+        // burn well past the burst budget; either outcome means the
+        // gate is real. The behaviour we want to assert is "this is a
+        // finite resource", not "the first call after a 100ms break
+        // succeeds" (which would race with other tests).
+        let mut saw_deny = false;
+        for _ in 0..(CU_RATE_BURST * 4) {
+            if cu_take_token().is_err() {
+                saw_deny = true;
+                break;
+            }
+        }
+        assert!(saw_deny, "cu_take_token never denied after 4× the burst");
+    }
 }

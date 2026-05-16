@@ -259,9 +259,19 @@ else:
 #   * Rate limit is the deepest layer so authenticated callers are
 #     bucketed by IP; it skips OPTIONS to avoid penalising preflight.
 
-# Per-route body-size overrides. Empty after the Gauntlet migration retired
-# the /visual-diff endpoint; kept as a hook for future large-body routes.
-LARGE_BODY_ROUTES: dict[str, int] = {}
+# Per-route body-size overrides.
+#
+# ``/voice/transcribe`` accepts base64-encoded audio up to the cap declared
+# in ``voice.py`` (``_MAX_AUDIO_BASE64_BYTES``). Without an override here
+# the global 1 MiB cap would 413 any clip longer than ~750 KB of base64
+# audio (≈10–20 s of compressed webm) before the endpoint sees it; the
+# 50 MiB Pydantic ceiling on the audio field would then be theatre.
+# Match the override to the Pydantic ceiling so the contract is honest:
+# either both reject at the same threshold, or this route's body is
+# trusted up to the same limit the schema declares.
+LARGE_BODY_ROUTES: dict[str, int] = {
+    "/voice/transcribe": 50 * 1024 * 1024,  # 50 MiB — matches voice._MAX_AUDIO_BASE64_BYTES
+}
 
 
 class BodySizeLimitMiddleware(BaseHTTPMiddleware):
