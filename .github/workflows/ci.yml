@@ -28,10 +28,17 @@ jobs:
 
       - env:
           # Composer's build throws when this is unset in a production
-          # build. CI is not a real release — point it at the current
-          # Railway service URL so `vite build` succeeds. Replace the
-          # value here when the backend host is renamed.
-          VITE_GAUNTLET_BACKEND_URL: https://ruberra-backend-jkpf-production.up.railway.app
+          # build. CI is not a real release, but we still need a real
+          # URL so ``vite build`` succeeds and the bundle is shaped the
+          # same way prod ships.
+          #
+          # Resolution order: GitHub Actions variable wins so a backend
+          # rename is a one-line ``gh variable set GAUNTLET_BACKEND_URL``
+          # (no PR), falling back to the current Railway hostname so a
+          # clone without the variable still builds. When the rename
+          # lands and the variable is set, drop the literal fallback
+          # in the same PR that flips the production env.
+          VITE_GAUNTLET_BACKEND_URL: ${{ vars.GAUNTLET_BACKEND_URL || 'https://ruberra-backend-jkpf-production.up.railway.app' }}
         run: npm run build
 
       # Pure-module unit tests for the composer package (placement,
