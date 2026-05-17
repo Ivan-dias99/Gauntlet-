@@ -63,10 +63,12 @@ from engine import Engine
 from log_redaction import install_redaction
 from rate_limit import RateLimitMiddleware
 from routers.agent import router as agent_router
+from routers.agents import router as agents_router
 from routers.ask import router as ask_router
 from routers.git import router as git_router
 from routers.health import router as health_router
 from routers.memory import router as memory_router
+from routers.missions import router as missions_router
 from routers.observability import router as observability_router
 from routers.permissions import router as permissions_router
 from routers.runs import router as runs_router
@@ -380,3 +382,6 @@ app.include_router(tools_router)
 app.include_router(git_router)
 app.include_router(permissions_router)
 app.include_router(observability_router)
+# Agentic IDE Native — operator-directed agent + mission primitives.
+app.include_router(agents_router)
+app.include_router(missions_router)
